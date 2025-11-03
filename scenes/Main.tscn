@@ -1,12 +1,13 @@
-[gd_scene load_steps=4 format=3 uid="uid://cmifje4jvd74"]
+[gd_scene load_steps=6 format=3 uid="uid://cmifje4jvd74"]
 
 [ext_resource type="Script" uid="uid://d37ystmnt3rsm" path="res://scripts/Fruit.gd" id="1_elqb8"]
+[ext_resource type="Script" uid="uid://ct5o4fbfkggpu" path="res://scripts/main.gd" id="1_rarhs"]
 [ext_resource type="Script" uid="uid://bylftkxbqcgi4" path="res://scripts/Snake.gd" id="2_0bbpv"]
 [ext_resource type="Script" uid="uid://nf82y6iabr6k" path="res://scripts/SnakeDrawer.gd" id="3_rarhs"]
+[ext_resource type="Script" uid="uid://bt7m7oti8uj6o" path="res://scripts/snake_2.gd" id="5_vcsgt"]
 
 [node name="Main" type="Node2D"]
-
-[node name="Main" type="Node2D" parent="."]
+script = ExtResource("1_rarhs")
 
 [node name="Fruit" type="Node2D" parent="."]
 script = ExtResource("1_elqb8")
@@ -16,12 +17,38 @@ offset_right = 20.0
 offset_bottom = 20.0
 color = Color(1, 0, 0.16862746, 1)
 
-[node name="Snake" type="Node2D" parent="."]
+[node name="Snake1" type="Node2D" parent="."]
+position = Vector2(100, 100)
 script = ExtResource("2_0bbpv")
 
-[node name="MoveTimer" type="Timer" parent="Snake"]
+[node name="MoveTimer" type="Timer" parent="Snake1"]
 wait_time = 0.1
 autostart = true
 
-[node name="Drawer" type="Node2D" parent="Snake"]
+[node name="Drawer" type="Node2D" parent="Snake1"]
 script = ExtResource("3_rarhs")
+
+[node name="Snake2" type="Node2D" parent="."]
+position = Vector2(300, 300)
+script = ExtResource("5_vcsgt")
+
+[node name="MoveTimer" type="Timer" parent="Snake2"]
+wait_time = 0.1
+autostart = true
+
+[node name="Drawer" type="Node2D" parent="Snake2"]
+script = ExtResource("3_rarhs")
+
+[node name="HUD" type="CanvasLayer" parent="."]
+
+[node name="ScoreLabel" type="Label" parent="HUD"]
+offset_right = 40.0
+offset_bottom = 23.0
+text = "P1: 0 P2: 0"
+
+[node name="GameTimer" type="Timer" parent="."]
+wait_time = 120.0
+one_shot = true
+autostart = true
+
+[connection signal="timeout" from="GameTimer" to="." method="_on_game_timer_timeout"]

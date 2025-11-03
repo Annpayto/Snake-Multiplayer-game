@@ -1,14 +1,14 @@
 # scripts/Snake.gd
 extends Node2D
-class_name Snake2  # lets us instantiate by type later if we want
+class_name Snake  # lets us instantiate by type later if we want
 
 @export var color: Color = Color.GREEN
 @export var grid_size: int = 20
 @export var controls := {
-	"up": "ui_up",
-	"down": "ui_down",
-	"left": "ui_left",
-	"right": "ui_right"
+	"up": "w",
+	"down": "s",
+	"left": "a",
+	"right": "d"
 }
 
 var direction := Vector2.RIGHT
@@ -64,7 +64,6 @@ func grow(cells: int = 3) -> void:
 func _on_drawer_draw() -> void:
 	# handled via signal hookup (see below)
 	pass
-	
 
 func reset_snake():
 	# reset position, direction, and size
