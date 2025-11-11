@@ -150,7 +150,7 @@ func end_game() -> void:
 
 
 # -------------------------------------------------------
-#  OPTIONAL: visible border for debugging
+#  visible border for debugging
 # -------------------------------------------------------
 
 func _draw() -> void:
