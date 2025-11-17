@@ -1,6 +1,9 @@
 extends Node2D
 class_name Snake
 
+@onready var game_manager_node = get_node("/Main/NetworkManager")
+var peer_id = -1
+
 @export var color: Color = Color.GREEN
 @export var grid_size: int = 20
 
@@ -25,17 +28,26 @@ var score := 0
 
 func _ready() -> void:
 	# IMPORTANT: keep the Snake node itself at origin so local==world space
+	peer_id = get_multiplayer_authority()
+	name = "Snake_" + str(peer_id)
 	position = Vector2.ZERO
 
 	segments.clear()
 	segments.append(start_pos.snapped(Vector2.ONE * grid_size))
 	drawer.queue_redraw()
-	move_timer.timeout.connect(_on_move_timer_timeout)
+	
+	if is_multiplayer_authority():
+		move_timer.timeout.connect(_on_move_timer_timeout)
+	else:
+		set_process_input(false)
 
 func _process(_dt: float) -> void:
-	_handle_input()
+	if is_multiplayer_authority():
+		_handle_input_and_send_rpc()
 
-func _handle_input() -> void:
+func _handle_input_and_send_rpc() -> void:
+	var request_direction = direction
+	
 	if Input.is_action_pressed(controls["up"]) and direction != Vector2.DOWN:
 		direction = Vector2.UP
 	elif Input.is_action_pressed(controls["down"]) and direction != Vector2.UP:
@@ -44,6 +56,10 @@ func _handle_input() -> void:
 		direction = Vector2.LEFT
 	elif Input.is_action_pressed(controls["right"]) and direction != Vector2.LEFT:
 		direction = Vector2.RIGHT
+	
+	if request_direction != direction:
+		if is_instance_valid(game_manager_node):
+			game_manager_node.client_request_direction.rpc(1, request_direction)
 
 func _on_move_timer_timeout() -> void:
 	_move()
