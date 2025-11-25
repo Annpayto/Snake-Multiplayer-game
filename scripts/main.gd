@@ -1,8 +1,6 @@
 # scripts/Main.gd
 extends Node2D
 
-@onready var snake1: Snake = $Snake1
-@onready var snake2: Snake = $Snake2
 @onready var fruit: Node = $Fruit
 @onready var score_label: Label = $HUD/ScoreLabel
 @onready var timer_label: Label = $HUD/TimerLabel
@@ -12,6 +10,8 @@ var grid_size: int = 20
 var game_over: bool = false
 var total_time: int = 60  # 1 minute
 var time_left: float = total_time
+var snake1: Snake = null
+var snake2: Snake = null
 
 
 func _ready() -> void:
@@ -23,14 +23,28 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if game_over:
 		return
-
+	
+	if is_instance_valid(snake1):
+		_check_fruit_collision(snake1)
+	if is_instance_valid(snake2):
+		_check_fruit_collision(snake2)
+	
 	# Update snakes and fruit
-	_check_fruit_collision(snake1)
-	_check_fruit_collision(snake2)
 	_check_collisions()
 
 	# Update labels
-	score_label.text = "P1: %d    P2: %d" % [snake1.score, snake2.score]
+	var p1_score: int = 0
+	var p2_score: int = 0
+	
+	if is_instance_valid(snake1):
+		p1_score = snake1.score
+	
+	if is_instance_valid(snake2):
+		p2_score = snake2.score
+		
+	# Update labels (using the safe local variables)
+	score_label.text = "P1: %d    P2: %d" % [p1_score, p2_score]
+	
 	timer_label.text = "Time: %d" % int(time_left)
 
 	# Countdown manually
@@ -47,6 +61,9 @@ func _process(delta: float) -> void:
 # -------------------------------------------------------
 
 func _check_fruit_collision(snake: Snake) -> void:
+	if not is_instance_valid(snake):
+		return
+	
 	if snake.segments.is_empty():
 		return
 
@@ -66,12 +83,14 @@ func _respawn_fruit_avoiding_snakes() -> void:
 			return # fallback if stuck
 
 func _fruit_overlaps_any_snake() -> bool:
-	for seg in snake1.segments:
-		if seg == fruit.position:
-			return true
-	for seg in snake2.segments:
-		if seg == fruit.position:
-			return true
+	if is_instance_valid(snake1):
+		for seg in snake1.segments:
+			if seg == fruit.position:
+				return true
+	if is_instance_valid(snake2):
+		for seg in snake2.segments:
+			if seg == fruit.position:
+				return true
 	return false
 
 
@@ -83,6 +102,9 @@ func _check_collisions() -> void:
 	var size: Vector2 = get_viewport_rect().size
 
 	for snake in [snake1, snake2]:
+		if not is_instance_valid(snake):
+			continue
+		
 		if snake.segments.is_empty():
 			continue
 		var head: Vector2 = snake.segments[0]
@@ -102,6 +124,9 @@ func _check_collisions() -> void:
 				var start_pos := Vector2(100, 100) if snake == snake1 else Vector2(300, 300)
 				snake.reset_snake_to_start(start_pos)
 				break
+	
+	if not is_instance_valid(snake1) or not is_instance_valid(snake2):
+		return
 
 	if snake1.segments.is_empty() or snake2.segments.is_empty():
 		return

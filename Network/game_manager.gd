@@ -2,8 +2,6 @@ extends Node
 
 var player_positions: Dictionary = {}
 const MAX_SPEED = 5.5
-func _enter_tree():
-	multiplayer.set_multiplayer_authority(1)
 
 
 @rpc("any_peer") #game state check to make sure player is moving correctly

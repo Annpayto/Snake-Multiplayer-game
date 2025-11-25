@@ -1,7 +1,7 @@
 extends Node2D
 class_name Snake
 
-@onready var game_manager_node = get_node("/Main/NetworkManager")
+var network_manager_node: Node = null
 var peer_id = -1
 
 @export var color: Color = Color.GREEN
@@ -27,7 +27,10 @@ var score := 0
 @onready var drawer: Node2D = $Drawer
 
 func _ready() -> void:
+	var network_manager_node = get_tree().get_first_node_in_group("network_manager")
 	# IMPORTANT: keep the Snake node itself at origin so local==world space
+	if not is_instance_valid(network_manager_node):
+		push_error("cannot find manager node")
 	peer_id = get_multiplayer_authority()
 	name = "Snake_" + str(peer_id)
 	position = Vector2.ZERO
@@ -58,8 +61,8 @@ func _handle_input_and_send_rpc() -> void:
 		direction = Vector2.RIGHT
 	
 	if request_direction != direction:
-		if is_instance_valid(game_manager_node):
-			game_manager_node.client_request_direction.rpc(1, request_direction)
+		if is_instance_valid(network_manager_node):
+			network_manager_node.client_request_direction.rpc(1, request_direction)
 
 func _on_move_timer_timeout() -> void:
 	_move()
