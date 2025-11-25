@@ -1,12 +1,13 @@
 extends Node
 
 @export var snake_scene: PackedScene
-@onready var game_manager_node = get_node("/Main/GameManager")
+@onready var game_manager_node = get_node("/root/Main/GameManager")
 const DEFAULT_PORT = 54612
 const MAX_PLAYERS = 2
 const SERVER_IP = "127.0.0.1" 
 var snake_positions: Dictionary = {}
 var snake_directions: Dictionary = {}
+var is_server_peer: bool = false
 
 func server_start():  #function to start the server and sends a fail messgae if applicable
 	var peer = ENetMultiplayerPeer.new()
@@ -51,17 +52,46 @@ func end_network(): #func to close the network
 
 func _on_peer_connected(id): # connects the peer and creates a snake for the player
 	print("Client connected! Peer ID: ", id)
-	var snake_node = snake_scene.instantiate()
-	snake_node.set_multiplayer_authority(id)
-	snake_node.name = "Snake_" + str(id)
-	get_tree().add_child(snake_node)
-	
-	snake_positions[id] = snake_node.start_pos.snapped(Vector2.ONE * snake_node.grid_size)
-	snake_directions[id] = Vector2.RIGHT
+	if is_server_peer:
+		spawn_snake.rpc(id)
 
 
 func _on_peer_disconnected(id):
 	print("Client disconnected! Peer ID: ", id)
+	if is_server_peer:
+		delete_snake.rpc(id)
+
+@rpc("call_local", "unreliable")
+func spawn_snake(id: int):
+	var snake_node = snake_scene.instantiate() as Node2D
+	snake_node.set_multiplayer_authority(id)
+	snake_node.name = "Snake_" + str(id)
+	
+	get_tree().root.add_child(snake_node)
+	snake_positions[id] = snake_node.start_pos.snapped(Vector2.ONE * snake_node.grid_size)
+	snake_directions[id] = Vector2.RIGHT
+	var main_node = get_node("/root/Main")
+	
+	if is_instance_valid(main_node) and main_node.has_method("register_snake"):
+		main_node.register_snake(id, snake_node)
+	
+	print("Spawned snake for peer ID: ", id)
+
+@rpc("call_local", "unreliable")
+func delete_snake(id: int):
+	var snake_node = get_tree().root.get_node_or_null("Snake_" + str(id))
+	if is_instance_valid(snake_node):
+		snake_node.queue_free()
+	
+	snake_positions.erase(id)
+	snake_directions.erase(id)
+	
+	var main_node = get_node("/root/Main")
+	if is_instance_valid(main_node) and main_node.has_method("unregister_snake"):
+		main_node.unregister_snake(id)
+	
+	print("Deleted snake for peer ID: ", id)
+
 
 
 func _on_connected_to_server():
@@ -84,8 +114,12 @@ func _ready(): #func to test server and client
 		server_start()
 	else:
 		client_start()
+	
+	if multiplayer.multiplayer_peer:
+		is_server_peer = (multiplayer.get_unique_id() == 1)
 		
 	if is_server():
 		print("I am the server. My network ID: ", get_id())
+		spawn_snake(1)
 	else:
 		print("I am a client. My network ID (after connecting): ", get_id())

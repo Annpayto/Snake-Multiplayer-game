@@ -3,8 +3,8 @@
 [ext_resource type="Script" uid="uid://d37ystmnt3rsm" path="res://scripts/Fruit.gd" id="1_elqb8"]
 [ext_resource type="Script" uid="uid://ct5o4fbfkggpu" path="res://scripts/main.gd" id="1_rarhs"]
 [ext_resource type="Script" uid="uid://bylftkxbqcgi4" path="res://scripts/Snake.gd" id="2_0bbpv"]
-[ext_resource type="Script" uid="uid://ckub7sc85dmun" path="res://network/game_manager.gd" id="2_c01mt"]
-[ext_resource type="Script" uid="uid://cmaod3si1q82l" path="res://network/network_manager.gd" id="3_nxtc6"]
+[ext_resource type="Script" uid="uid://ckub7sc85dmun" path="res://Network/game_manager.gd" id="2_c01mt"]
+[ext_resource type="Script" uid="uid://cmaod3si1q82l" path="res://Network/Network_manager.gd" id="3_nxtc6"]
 [ext_resource type="Script" uid="uid://nf82y6iabr6k" path="res://scripts/SnakeDrawer.gd" id="3_rarhs"]
 
 [node name="Main" type="Node2D"]
@@ -27,12 +27,15 @@ color = Color(1, 0, 0.16862746, 1)
 [node name="Snake1" type="Node2D" parent="."]
 position = Vector2(100, 100)
 script = ExtResource("2_0bbpv")
+color = null
+grid_size = null
 controls = {
 "down": "s",
 "left": "a",
 "right": "d",
 "up": "w"
 }
+start_pos = null
 
 [node name="MoveTimer" type="Timer" parent="Snake1"]
 wait_time = 0.1
@@ -65,6 +68,8 @@ autostart = true
 [node name="Snake2" type="Node2D" parent="."]
 script = ExtResource("2_0bbpv")
 color = Color(0, 1, 0.85490197, 1)
+grid_size = null
+controls = null
 start_pos = Vector2(300, 300)
 
 [node name="MoveTimer" type="Timer" parent="Snake2"]
