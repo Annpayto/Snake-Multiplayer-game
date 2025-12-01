@@ -1,9 +1,10 @@
-[gd_scene load_steps=5 format=3 uid="uid://cmifje4jvd74"]
+[gd_scene load_steps=6 format=3 uid="uid://cmifje4jvd74"]
 
 [ext_resource type="Script" uid="uid://d37ystmnt3rsm" path="res://scripts/Fruit.gd" id="1_elqb8"]
 [ext_resource type="Script" uid="uid://ct5o4fbfkggpu" path="res://scripts/main.gd" id="1_rarhs"]
 [ext_resource type="Script" uid="uid://bylftkxbqcgi4" path="res://scripts/Snake.gd" id="2_0bbpv"]
 [ext_resource type="Script" uid="uid://nf82y6iabr6k" path="res://scripts/SnakeDrawer.gd" id="3_rarhs"]
+[ext_resource type="Script" uid="uid://dxmve27elct5q" path="res://scripts/NetworkManager.gd" id="5_vcsgt"]
 
 [node name="Main" type="Node2D"]
 script = ExtResource("1_rarhs")
@@ -65,5 +66,8 @@ autostart = true
 
 [node name="Drawer" type="Node2D" parent="Snake2"]
 script = ExtResource("3_rarhs")
+
+[node name="NetworkManager" type="Node" parent="."]
+script = ExtResource("5_vcsgt")
 
 [connection signal="timeout" from="GameTimer" to="." method="_on_game_timer_timeout"]

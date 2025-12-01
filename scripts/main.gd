@@ -1,42 +1,148 @@
-# scripts/Main.gd
 extends Node2D
 
 @onready var snake1: Snake = $Snake1
 @onready var snake2: Snake = $Snake2
-@onready var fruit: Node = $Fruit
+@onready var fruit: Node2D = $Fruit
 @onready var score_label: Label = $HUD/ScoreLabel
 @onready var timer_label: Label = $HUD/TimerLabel
-@onready var game_timer: Timer = $GameTimer
 
 var grid_size: int = 20
 var game_over: bool = false
-var total_time: int = 60  # 1 minute
-var time_left: float = total_time
+
+var total_time: float = 60.0   # 1 minute
+var time_left: float = 60.0
 
 
+# -------------------------------------------------------
+#  READY
+# -------------------------------------------------------
 func _ready() -> void:
-	# Set timer to 1 minute (60 seconds)
-	game_timer.wait_time = 1.0
-	game_timer.start()
+	time_left = total_time
+
+	# Only host picks the starting fruit position
+	if NetworkManage.is_server:
+		_respawn_fruit_avoiding_snakes()
+		rpc("rpc_sync_fruit", fruit.position)
 
 
+# -------------------------------------------------------
+#  RPC: sync snake state
+# -------------------------------------------------------
+@rpc("unreliable_ordered")
+func rpc_sync_snake(id: int, segments: Array, score: int) -> void:
+	# Runs on clients when host calls rpc()
+	if NetworkManage.is_server:
+		return
+
+	var snake: Snake = snake1 if id == 1 else snake2
+	snake.segments = segments.duplicate()
+	snake.score = score
+	snake.drawer.queue_redraw()
+
+
+func _sync_snakes_to_clients() -> void:
+	if not NetworkManage.is_server:
+		return
+
+	rpc("rpc_sync_snake", 1, snake1.segments, snake1.score)
+	rpc("rpc_sync_snake", 2, snake2.segments, snake2.score)
+
+
+# -------------------------------------------------------
+#  RPC: server → clients, sync fruit position
+# -------------------------------------------------------
+@rpc("reliable")
+func rpc_sync_fruit(pos: Vector2) -> void:
+	# Host already has the correct position
+	if NetworkManage.is_server:
+		return
+	fruit.position = pos
+
+
+# -------------------------------------------------------
+#  RPC: clients → server, request direction change
+# -------------------------------------------------------
+@rpc("any_peer", "reliable")
+func rpc_request_direction(snake_id: int, dir: Vector2) -> void:
+	if not NetworkManage.is_server:
+		return
+
+	var snake: Snake = snake1 if snake_id == 1 else snake2
+	_apply_direction(snake, dir)
+
+
+func _apply_direction(snake: Snake, dir: Vector2) -> void:
+	if dir == Vector2.ZERO:
+		return
+	if dir == -snake.direction:
+		return
+	snake.direction = dir
+
+
+func _get_input_direction(snake: Snake) -> Vector2:
+	var c: Dictionary = snake.controls
+	var dir := Vector2.ZERO
+
+	if Input.is_action_pressed(c["up"]):
+		dir = Vector2.UP
+	elif Input.is_action_pressed(c["down"]):
+		dir = Vector2.DOWN
+	elif Input.is_action_pressed(c["left"]):
+		dir = Vector2.LEFT
+	elif Input.is_action_pressed(c["right"]):
+		dir = Vector2.RIGHT
+
+	return dir
+
+
+func _handle_local_input() -> void:
+	var local_snake: Snake
+	var local_id: int
+
+	if NetworkManage.is_server:
+		# Host controls snake1
+		local_snake = snake1
+		local_id = 1
+	else:
+		# Client controls snake2
+		local_snake = snake2
+		local_id = 2
+
+	var dir := _get_input_direction(local_snake)
+	if dir == Vector2.ZERO:
+		return
+
+	if NetworkManage.is_server:
+		_apply_direction(local_snake, dir)
+	else:
+		# Client asks host to apply direction to snake2
+		rpc_id(1, "rpc_request_direction", local_id, dir)
+
+
+# -------------------------------------------------------
+#  MAIN LOOP
+# -------------------------------------------------------
 func _process(delta: float) -> void:
 	if game_over:
 		return
 
-	# Update snakes and fruit
-	_check_fruit_collision(snake1)
-	_check_fruit_collision(snake2)
-	_check_collisions()
+	# Everyone reads *their* local input
+	_handle_local_input()
 
-	# Update labels
+	if NetworkManage.is_server:
+		# Host runs game logic
+		_check_fruit_collision(snake1)
+		_check_fruit_collision(snake2)
+		_check_collisions()
+		_sync_snakes_to_clients()
+
+	# UI updated everywhere
 	score_label.text = "P1: %d    P2: %d" % [snake1.score, snake2.score]
 	timer_label.text = "Time: %d" % int(time_left)
 
-	# Countdown manually
 	time_left -= delta
-	if time_left <= 0:
-		time_left = 0
+	if NetworkManage.is_server and time_left <= 0.0:
+		time_left = 0.0
 		end_game()
 
 	queue_redraw()
@@ -45,7 +151,6 @@ func _process(delta: float) -> void:
 # -------------------------------------------------------
 #  FRUIT COLLISION / RESPAWN
 # -------------------------------------------------------
-
 func _check_fruit_collision(snake: Snake) -> void:
 	if snake.segments.is_empty():
 		return
@@ -55,15 +160,22 @@ func _check_fruit_collision(snake: Snake) -> void:
 		snake.grow()
 		_respawn_fruit_avoiding_snakes()
 
+
 func _respawn_fruit_avoiding_snakes() -> void:
 	var tries := 0
 	while true:
 		tries += 1
 		fruit.randomize_position()
 		if not _fruit_overlaps_any_snake():
+			if NetworkManage.is_server:
+				rpc("rpc_sync_fruit", fruit.position)
 			return
+
 		if tries > 50:
-			return # fallback if stuck
+			if NetworkManage.is_server:
+				rpc("rpc_sync_fruit", fruit.position)
+			return
+
 
 func _fruit_overlaps_any_snake() -> bool:
 	for seg in snake1.segments:
@@ -76,33 +188,34 @@ func _fruit_overlaps_any_snake() -> bool:
 
 
 # -------------------------------------------------------
-#  COLLISIONS (WALLS, SELF, OTHER)
+#  COLLISIONS
 # -------------------------------------------------------
-
 func _check_collisions() -> void:
 	var size: Vector2 = get_viewport_rect().size
 
 	for snake in [snake1, snake2]:
 		if snake.segments.is_empty():
 			continue
-		var head: Vector2 = snake.segments[0]
-		var grid: int = snake.grid_size
 
-		# --- Wall collision fix (for 1152x648 window) ---
+		var head: Vector2 = snake.segments[0]
+		var g: int = snake.grid_size
+
+		# Wall collision
 		if head.x < 0 or head.y < 0 \
-				or head.x >= size.x - grid \
-				or head.y >= size.y - grid:
+				or head.x >= size.x - g \
+				or head.y >= size.y - g:
 			var start_pos := Vector2(100, 100) if snake == snake1 else Vector2(300, 300)
 			snake.reset_snake_to_start(start_pos)
 			continue
 
-		# --- Self collision ---
+		# Self collision
 		for i in range(1, snake.segments.size()):
 			if head == snake.segments[i]:
 				var start_pos := Vector2(100, 100) if snake == snake1 else Vector2(300, 300)
 				snake.reset_snake_to_start(start_pos)
 				break
 
+	# Snake vs snake
 	if snake1.segments.is_empty() or snake2.segments.is_empty():
 		return
 
@@ -128,7 +241,6 @@ func _check_collisions() -> void:
 # -------------------------------------------------------
 #  GAME END
 # -------------------------------------------------------
-
 func end_game() -> void:
 	if game_over:
 		return
@@ -141,7 +253,7 @@ func end_game() -> void:
 		winner = "Player 2"
 
 	var label := Label.new()
-	label.text = "⏰ Time's Up! Winner: %s\nP1: %d   P2: %d" % [winner, snake1.score, snake2.score]
+	label.text = "Time's Up! Winner: %s\nP1: %d   P2: %d" % [winner, snake1.score, snake2.score]
 	label.theme_type_variation = "HeaderLarge"
 	label.position = get_viewport_rect().size * 0.5 - Vector2(220, 40)
 	add_child(label)
@@ -149,10 +261,6 @@ func end_game() -> void:
 	get_tree().paused = true
 
 
-# -------------------------------------------------------
-#  OPTIONAL: visible border for debugging
-# -------------------------------------------------------
-
 func _draw() -> void:
-	var size = get_viewport_rect().size
+	var size := get_viewport_rect().size
 	draw_rect(Rect2(Vector2.ZERO, size), Color.WHITE, false, 2)

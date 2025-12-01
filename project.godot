@@ -11,9 +11,13 @@ config_version=5
 [application]
 
 config/name="Snake multiplayer game"
-run/main_scene="uid://cmifje4jvd74"
+run/main_scene="uid://be2pfifg5qwby"
 config/features=PackedStringArray("4.5", "Forward Plus")
 config/icon="res://icon.svg"
+
+[autoload]
+
+NetworkManage="*res://scenes/NetworkManager.tscn"
 
 [editor]
 

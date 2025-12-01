@@ -1,0 +1,29 @@
+[gd_scene load_steps=2 format=3 uid="uid://be2pfifg5qwby"]
+
+[ext_resource type="Script" uid="uid://bu1376fq2ypp1" path="res://scripts/NetMenu.gd" id="1_5taeg"]
+
+[node name="NetMenu" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+script = ExtResource("1_5taeg")
+
+[node name="VBox" type="VBoxContainer" parent="."]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="HostButton" type="Button" parent="VBox"]
+layout_mode = 2
+text = "Host"
+
+[node name="JoinButton" type="Button" parent="VBox"]
+layout_mode = 2
+text = "Join"
+
+[node name="IpEdit" type="LineEdit" parent="VBox"]
+layout_mode = 2
+placeholder_text = "Server IP (blank = localhost)"
+
+[node name="StatusLabel" type="Label" parent="VBox"]
+layout_mode = 2
+text = "Status: idle"
