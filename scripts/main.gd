@@ -12,6 +12,12 @@ var game_over: bool = false
 var total_time: float = 60.0   # 1 minute
 var time_left: float = 60.0
 
+enum Gamestate { WAITING_FOR_PLAYERS, STARTING, IN_GAME, GAME_OVER }
+var current_state: Gamestate = Gamestate.WAITING_FOR_PLAYERS
+
+var required_client: int = 1
+var connected_client: int = 0
+
 
 # -------------------------------------------------------
 #  READY
@@ -21,8 +27,58 @@ func _ready() -> void:
 
 	# Only host picks the starting fruit position
 	if NetworkManage.is_server:
-		_respawn_fruit_avoiding_snakes()
-		rpc("rpc_sync_fruit", fruit.position)
+		print("HOST: Game scene loaded. Waiting for client...")
+		NetworkManage.client_connected.connect(_on_client_joined)
+		NetworkManage.client_disconnected.connect(_on_client_left)
+		
+		current_state = Gamestate.WAITING_FOR_PLAYERS
+		score_label.text = "Waiting for Player 2..."
+	else:
+		current_state = Gamestate.WAITING_FOR_PLAYERS
+		score_label.text = "Connected. Waiting for Host to Start"
+
+func _on_client_joined(id: int) -> void:
+	if not NetworkManage.is_server:
+		return # Only host cares about new connections for starting the match
+	
+	connected_client += 1
+	
+	if connected_client >= required_client:
+		print("HOST: Required clients connected. Starting match...")
+		_start_match()
+	
+	else:
+		print("HOST: Still waiting for more players...")
+
+func _on_client_left(id: int) -> void: # <-- ADD THIS FUNCTION
+	if not NetworkManage.is_server:
+		return
+	
+	connected_client -= 1
+	print("HOST: Client disconnected! ID: ", id, ". Remaining clients: ", connected_client)
+	if current_state == Gamestate.IN_GAME and connected_client < required_client:
+		print("CRITICAL: Client disconnected mid-game. Ending match.")
+		end_game()
+
+func _start_match() -> void:
+	if current_state != Gamestate.WAITING_FOR_PLAYERS:
+		return
+	
+	current_state = Gamestate.IN_GAME
+	time_left = total_time
+	
+	# Original logic from _ready():
+	_respawn_fruit_avoiding_snakes()
+	rpc("rpc_sync_fruit", fruit.position)
+	
+	rpc("rpc_game_start_confirmed")
+
+
+@rpc("reliable")
+func rpc_game_start_confirmed() -> void:
+	if current_state != Gamestate.IN_GAME:
+		print("Match starting now!")
+		current_state = Gamestate.IN_GAME
 
 
 # -------------------------------------------------------
@@ -123,6 +179,19 @@ func _handle_local_input() -> void:
 #  MAIN LOOP
 # -------------------------------------------------------
 func _process(delta: float) -> void:
+	if current_state != Gamestate.IN_GAME and current_state != Gamestate.GAME_OVER:
+		score_label.text = "P1: %d   P2: %d" % [snake1.score, connected_client] 
+		timer_label.text = "Waiting..."
+		queue_redraw()
+		return
+
+	if current_state == Gamestate.GAME_OVER:
+		return
+		
+	# All game logic below will ONLY run if current_state == IN_GAME
+	
+	# Everyone reads *their* local input
+	_handle_local_input()
 	if game_over:
 		return
 
@@ -255,10 +324,23 @@ func end_game() -> void:
 	var label := Label.new()
 	label.text = "Time's Up! Winner: %s\nP1: %d   P2: %d" % [winner, snake1.score, snake2.score]
 	label.theme_type_variation = "HeaderLarge"
+	
+	rpc("rpc_display_final_score", winner, snake1.score, snake2.score)
+
+@rpc("reliable")
+func rpc_display_final_score(winner: String, p1_score: int, p2_score: int) -> void:
+	if current_state == Gamestate.GAME_OVER:
+		return
+	
+	current_state = Gamestate.GAME_OVER
+	
+	score_label.text = "P1: %d    P2: %d" % [p1_score, p2_score]
+	timer_label.text = "GAME OVER!"
+	var label := Label.new()
+	label.text = "Time's Up! Winner: %s\nP1: %d    P2: %d" % [winner, p1_score, p2_score]
+	label.theme_type_variation = "HeaderLarge"
 	label.position = get_viewport_rect().size * 0.5 - Vector2(220, 40)
 	add_child(label)
-
-	get_tree().paused = true
 
 
 func _draw() -> void:
