@@ -49,6 +49,7 @@ script = ExtResource("3_rarhs")
 [node name="HUD" type="CanvasLayer" parent="."]
 
 [node name="Panel" type="Panel" parent="HUD"]
+visible = false
 offset_right = 1153.0
 offset_bottom = 28.0
 theme_override_styles/panel = SubResource("StyleBoxFlat_c01mt")
