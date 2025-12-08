@@ -90,6 +90,5 @@ script = ExtResource("3_rarhs")
 script = ExtResource("5_vcsgt")
 
 [node name="GameOverMenu" parent="." instance=ExtResource("8_jlsqs")]
-visible = false
 
 [connection signal="timeout" from="GameTimer" to="." method="_on_game_timer_timeout"]

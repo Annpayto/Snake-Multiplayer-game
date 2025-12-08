@@ -5,6 +5,7 @@ extends Node2D
 @onready var fruit: Node2D = $Fruit
 @onready var score_label: Label = $HUD/ScoreLabel
 @onready var timer_label: Label = $HUD/TimerLabel
+@onready var gameover_label: CanvasLayer = $GameOverMenu
 
 var grid_size: int = 20
 var game_over: bool = false
@@ -24,7 +25,9 @@ var connected_client: int = 0
 # -------------------------------------------------------
 func _ready() -> void:
 	time_left = total_time
-
+	
+	gameover_label.restart.connect(_on_restart_requested)
+	gameover_label.get_node("RestartButton").hide()
 	# Only host picks the starting fruit position
 	if NetworkManage.is_server:
 		print("HOST: Game scene loaded. Waiting for client...")
@@ -320,9 +323,11 @@ func end_game() -> void:
 		winner = "Player 1"
 	elif snake2.score > snake1.score:
 		winner = "Player 2"
-
+	
+	print("SERVER GAME ENDED | Winner: %s | P1 Score: %d | P2 Score: %d" % [winner, snake1.score, snake2.score])
+	
 	var label := Label.new()
-	label.text = "Time's Up! Winner: %s\nP1: %d   P2: %d" % [winner, snake1.score, snake2.score]
+	label.text = "Time's Up! Winner: %s\nP1: %d   P2: %d" % [winner, snake1.score, snake2.score]
 	label.theme_type_variation = "HeaderLarge"
 	
 	rpc("rpc_display_final_score", winner, snake1.score, snake2.score)
@@ -341,7 +346,47 @@ func rpc_display_final_score(winner: String, p1_score: int, p2_score: int) -> vo
 	label.theme_type_variation = "HeaderLarge"
 	label.position = get_viewport_rect().size * 0.5 - Vector2(220, 40)
 	add_child(label)
+	
+	gameover_label.get_node("RestartButton").show()
 
+func _on_restart_requested() -> void:
+	rpc_id(1, "rpc_request_rematch")
+
+func _reset_game_on_server() -> void:
+	game_over = false
+	time_left = total_time
+	current_state = Gamestate.IN_GAME
+	snake1.reset_snake_to_start(Vector2(100, 100))
+	snake2.reset_snake_to_start(Vector2(300, 300))
+	snake1.score = 0
+	snake2.score = 0
+	_respawn_fruit_avoiding_snakes()
+	rpc("rpc_rematch_confirmed")
+	print("HOST: Game successfully reset and rematch started.")
+
+@rpc("any_peer", "reliable")
+func rpc_request_rematch() -> void:
+	if not NetworkManage.is_server:
+		return
+	
+	print("HOST: Rematch requested. Resetting game...")
+	_reset_game_on_server()
+
+@rpc("reliable")
+func rpc_rematch_confirmed() -> void:
+	var children = get_children()
+	if children.size() > 0:
+		var last_child = children[children.size() - 1]
+		if last_child is Label:
+			last_child.queue_free()
+	
+	game_over = false
+	time_left = total_time
+	current_state = Gamestate.IN_GAME
+	score_label.text = "P1: 0   P2: 0"
+	timer_label.text = "Time: %d" % int(total_time) # Show full time again
+	gameover_label.get_node("RestartButton").hide()
+	print("Peer %d: Game reset and rematch confirmed." % multiplayer.get_unique_id())
 
 func _draw() -> void:
 	var size := get_viewport_rect().size
