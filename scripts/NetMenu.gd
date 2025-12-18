@@ -1,3 +1,4 @@
+#Copywrite Andon and Harrison
 extends Control
 
 @onready var host_button: Button = $VBox/HostButton

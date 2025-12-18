@@ -1,3 +1,5 @@
+
+#Copywrite Andon and Harrison
 # scripts/SnakeDrawer.gd
 extends Node2D
 

@@ -1,10 +1,11 @@
+#Copywrite Andon and Harrison
 extends Node2D
 class_name Snake
 
 @export var color: Color = Color.GREEN
 @export var grid_size: int = 20
 
-# Input actions this snake uses – set in Inspector
+# Input actions this snake uses – set in node inspector
 @export var controls: Dictionary = {
 	"up": "ui_up",
 	"down": "ui_down",
@@ -25,7 +26,7 @@ var score: int = 0
 
 
 func _ready() -> void:
-	# Keep node at origin; segments are in world space
+	# Keep node at origin
 	position = Vector2.ZERO
 
 	segments.clear()
@@ -42,7 +43,6 @@ func _ready() -> void:
 
 func _on_move_timer_timeout() -> void:
 	_move()
-
 
 func _move() -> void:
 	if segments.is_empty():
@@ -62,7 +62,6 @@ func _move() -> void:
 func grow(cells: int = 3) -> void:
 	grow_amount += cells
 	score += 1
-
 
 func reset_snake_to_start(start_world_pos: Vector2) -> void:
 	direction = Vector2.RIGHT

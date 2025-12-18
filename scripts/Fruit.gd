@@ -1,4 +1,5 @@
 # scripts/Fruit.gd
+#Copywrite Andon and Harrison
 extends Node2D
 
 @export var grid_size: int = 20

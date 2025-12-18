@@ -1,3 +1,4 @@
+#Copywrite Andon and Harrison
 extends Node
 class_name NetworkManager
 

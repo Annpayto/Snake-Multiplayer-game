@@ -1,3 +1,4 @@
+#Copywrite Andon and Harrison
 extends Node2D
 
 @onready var snake1: Snake = $Snake1
@@ -20,9 +21,9 @@ var required_client: int = 1
 var connected_client: int = 0
 
 
-# -------------------------------------------------------
+
 #  READY
-# -------------------------------------------------------
+
 func _ready() -> void:
 	time_left = total_time
 	
@@ -53,7 +54,7 @@ func _on_client_joined(id: int) -> void:
 	else:
 		print("HOST: Still waiting for more players...")
 
-func _on_client_left(id: int) -> void: # <-- ADD THIS FUNCTION
+func _on_client_left(id: int) -> void: 
 	if not NetworkManage.is_server:
 		return
 	
@@ -84,9 +85,9 @@ func rpc_game_start_confirmed() -> void:
 		current_state = Gamestate.IN_GAME
 
 
-# -------------------------------------------------------
-#  RPC: sync snake state
-# -------------------------------------------------------
+
+# sync snake state
+
 @rpc("unreliable_ordered")
 func rpc_sync_snake(id: int, segments: Array, score: int) -> void:
 	# Runs on clients when host calls rpc()
@@ -107,9 +108,9 @@ func _sync_snakes_to_clients() -> void:
 	rpc("rpc_sync_snake", 2, snake2.segments, snake2.score)
 
 
-# -------------------------------------------------------
-#  RPC: server → clients, sync fruit position
-# -------------------------------------------------------
+
+# server to clients, sync fruit position
+
 @rpc("reliable")
 func rpc_sync_fruit(pos: Vector2) -> void:
 	# Host already has the correct position
@@ -118,9 +119,8 @@ func rpc_sync_fruit(pos: Vector2) -> void:
 	fruit.position = pos
 
 
-# -------------------------------------------------------
-#  RPC: clients → server, request direction change
-# -------------------------------------------------------
+
+#  clients to server, request direction change
 @rpc("any_peer", "reliable")
 func rpc_request_direction(snake_id: int, dir: Vector2) -> void:
 	if not NetworkManage.is_server:
@@ -178,9 +178,9 @@ func _handle_local_input() -> void:
 		rpc_id(1, "rpc_request_direction", local_id, dir)
 
 
-# -------------------------------------------------------
+
 #  MAIN LOOP
-# -------------------------------------------------------
+
 func _process(delta: float) -> void:
 	if current_state != Gamestate.IN_GAME and current_state != Gamestate.GAME_OVER:
 		score_label.text = "P1: %d   P2: %d" % [snake1.score, connected_client] 
@@ -193,12 +193,12 @@ func _process(delta: float) -> void:
 		
 	# All game logic below will ONLY run if current_state == IN_GAME
 	
-	# Everyone reads *their* local input
+	# Everyone reads their local input
 	_handle_local_input()
 	if game_over:
 		return
 
-	# Everyone reads *their* local input
+	# Everyone reads their local input
 	_handle_local_input()
 
 	if NetworkManage.is_server:
@@ -220,9 +220,8 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 
-# -------------------------------------------------------
+
 #  FRUIT COLLISION / RESPAWN
-# -------------------------------------------------------
 func _check_fruit_collision(snake: Snake) -> void:
 	if snake.segments.is_empty():
 		return
@@ -259,9 +258,8 @@ func _fruit_overlaps_any_snake() -> bool:
 	return false
 
 
-# -------------------------------------------------------
+
 #  COLLISIONS
-# -------------------------------------------------------
 func _check_collisions() -> void:
 	var size: Vector2 = get_viewport_rect().size
 
@@ -310,9 +308,9 @@ func _check_collisions() -> void:
 			return
 
 
-# -------------------------------------------------------
+
 #  GAME END
-# -------------------------------------------------------
+
 func end_game() -> void:
 	if game_over:
 		return
